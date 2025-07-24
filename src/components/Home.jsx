@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import SlidingTab from "./SlidingTab";
+import Online from "./Online";
 
 const Home = ({
   onStart,
@@ -33,10 +34,20 @@ const Home = ({
   const handleStartGame = () => {
     if (validateInputs()) {
       if (mode === "computer") {
-        onStart(player1, "Computer", playerChoice);
+        onStart(player1, "Computer", "normal");
       } else if (mode === "player") {
-        onStart(player1, player2, playerChoice);
+        onStart(player1, player2, "normal");
       }
+    }
+  };
+
+  const handleOnlineMode = () => {
+    // For online mode, we just need a player name and then start the game
+    if (player1) {
+      setPlayer1Error("");
+      onStart(player1, "Online Opponent", "online");
+    } else {
+      setPlayer1Error("Your name is required to play online");
     }
   };
 
@@ -67,11 +78,17 @@ const Home = ({
             >
               Play vs Friend
             </button>
+            <button
+              className="btn-secondary w-full py-3 text-lg font-medium rounded-lg shadow-lg"
+              onClick={() => setMode("online")}
+            >
+              Play Online
+            </button>
           </div>
         )}
 
-        {/* Player Setup */}
-        {mode && (
+        {/* Player Setup for Normal Modes */}
+        {(mode === "computer" || mode === "player") && (
           <div className="flex flex-col space-y-6 w-full bg-slate-800/50 p-6 rounded-xl shadow-lg border border-slate-700">
             <h2 className="text-xl text-white font-medium text-center">
               {mode === "computer" ? "Play vs Computer" : "Play vs Friend"}
@@ -127,6 +144,42 @@ const Home = ({
               onClick={handleStartGame}
             >
               Start Game
+            </button>
+          </div>
+        )}
+
+        {/* Player Setup for Online Mode */}
+        {mode === "online" && (
+          <div className="flex flex-col space-y-6 w-full bg-slate-800/50 p-6 rounded-xl shadow-lg border border-slate-700">
+            <h2 className="text-xl text-white font-medium text-center">
+              Play Online
+            </h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">
+                  Your Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter your name"
+                  className={`w-full px-4 py-3 bg-slate-900 border ${
+                    player1Error ? "border-red-500" : "border-slate-700"
+                  } text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent`}
+                  value={player1}
+                  onChange={(e) => setPlayer1(e.target.value)}
+                />
+                {player1Error && (
+                  <p className="mt-1 text-sm text-red-500">{player1Error}</p>
+                )}
+              </div>
+            </div>
+            
+            <button
+              className="btn-primary w-full py-3 text-lg font-semibold rounded-lg shadow-lg mt-4"
+              onClick={handleOnlineMode}
+            >
+              Continue to Online Play
             </button>
           </div>
         )}

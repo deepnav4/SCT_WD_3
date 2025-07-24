@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Home from "./components/Home";
 import Board from "./components/Board";
+import Online from "./components/Online";
 
 const App = () => {
   const [darkMode, setDarkMode] = useState(false);
@@ -10,15 +11,24 @@ const App = () => {
     document.documentElement.classList.toggle("dark");
   };
   const [gameStarted, setGameStarted] = useState(false);
+  const [gameMode, setGameMode] = useState(null); // 'normal' or 'online'
   const [player1, setPlayer1] = useState("");
   const [player2, setPlayer2] = useState("");
+  
   const handlePlayerChoiceChange = (choice) => {
     setPlayerChoice(choice);
   };
-  const handleStartGame = (player1, player2) => {
+  
+  const handleStartGame = (player1, player2, mode = "normal") => {
     setPlayer1(player1);
     setPlayer2(player2);
+    setGameMode(mode);
     setGameStarted(true);
+  };
+
+  const handleBackToHome = () => {
+    setGameStarted(false);
+    setGameMode(null);
   };
 
   return (
@@ -29,19 +39,21 @@ const App = () => {
       
       {/* Main content */}
       <div className="relative z-10 w-full min-h-screen flex items-center justify-center">
-        {gameStarted ? (
-          <Board
-            player1={player1}
-            player2={player2}
-            handlePlayerChoiceChange={handlePlayerChoiceChange}
-            playerChoice={playerChoice}
-          />
-        ) : (
+        {!gameStarted ? (
           <Home
             onStart={handleStartGame}
             handlePlayerChoiceChange={handlePlayerChoiceChange}
             playerChoice={playerChoice}
             setPlayerChoice={setPlayerChoice}
+          />
+        ) : gameMode === "online" ? (
+          <Online onBackToHome={handleBackToHome} />
+        ) : (
+          <Board
+            player1={player1}
+            player2={player2}
+            handlePlayerChoiceChange={handlePlayerChoiceChange}
+            playerChoice={playerChoice}
           />
         )}
       </div>

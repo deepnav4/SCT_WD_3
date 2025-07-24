@@ -1,0 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+
+@layer base {
+  html {
+    font-family: 'Poppins', sans-serif;
+  }
+  
+  body {
+    @apply bg-slate-900 text-white min-h-screen;
+  }
+}
+
+@layer utilities {
+  .bg-game-gradient {
+    background: linear-gradient(to bottom right, #1e293b, #0f172a);
+  }
+  
+  .text-game-primary {
+    @apply text-cyan-400;
+  }
+  
+  .border-game-accent {
+    @apply border-cyan-500;
+  }
+  
+  .btn-primary {
+    @apply bg-cyan-600 hover:bg-cyan-700 text-white font-medium py-2 px-4 rounded-md transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-slate-700 hover:bg-slate-800 text-white font-medium py-2 px-4 rounded-md transition-colors;
+  }
+}

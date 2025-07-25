@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
-export default function OnlineBoard({ ws, playerSymbol, roomCode, isMyTurn, onGameEnd }) {
+export default function OnlineBoard({ socket, playerSymbol, roomCode, isMyTurn, onGameEnd }) {
+  // X always goes first
   const [squares, setSquares] = useState(Array(9).fill(null));
-  const [turn, setTurn] = useState(isMyTurn ? playerSymbol : playerSymbol === "X" ? "O" : "X");
+  const [turn, setTurn] = useState("X"); 
   const [winner, setWinner] = useState(null);
   const [draw, setDraw] = useState(false);
   const [connectionLost, setConnectionLost] = useState(false);
@@ -12,65 +13,69 @@ export default function OnlineBoard({ ws, playerSymbol, roomCode, isMyTurn, onGa
   const [gameEnded, setGameEnded] = useState(false);
 
   useEffect(() => {
-    if (!ws) return;
+    if (!socket) return;
 
-    const handleMessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        console.log("Board received:", data);
-
-        if (data.type === "move") {
-          const { index, symbol } = data.move;
-          setSquares((prev) => {
-            if (prev[index]) return prev;
-            const newSquares = prev.slice();
-            newSquares[index] = symbol;
-            return newSquares;
-          });
-          setTurn(symbol === "X" ? "O" : "X");
-        }
-
-        if (data.type === "player-left") {
-          setOpponentLeft(true);
-        }
-
-        if (data.type === "rematch-request") {
-          console.log("Received rematch request from opponent");
-          setRematchOffered(true);
-        }
-
-        if (data.type === "rematch-accepted") {
-          console.log("Rematch accepted by opponent");
-          resetBoard();
-          setRematchOffered(false);
-          setRematchRequested(false);
-          setGameEnded(false);
-        }
-      } catch (error) {
-        console.error("Error handling message:", error);
-      }
+    const moveHandler = (data) => {
+      console.log("Board received move:", data);
+      const { index, symbol } = data.move;
+      
+      setSquares((prev) => {
+        if (prev[index]) return prev;
+        const newSquares = prev.slice();
+        newSquares[index] = symbol;
+        return newSquares;
+      });
+      
+      // After opponent's move, it's my turn
+      setTurn(symbol === "X" ? "O" : "X");
     };
 
-    const handleClose = () => {
-      console.log("WebSocket closed in board");
+    const playerLeftHandler = () => {
+      console.log("Opponent left the game");
+      setOpponentLeft(true);
+    };
+
+    const rematchRequestHandler = () => {
+      console.log("Received rematch request from opponent");
+      setRematchOffered(true);
+    };
+
+    const rematchAcceptedHandler = () => {
+      console.log("Rematch accepted by opponent");
+      resetBoard();
+      setRematchOffered(false);
+      setRematchRequested(false);
+      setGameEnded(false);
+    };
+
+    const disconnectHandler = () => {
+      console.log("Socket.io disconnected in board");
       setConnectionLost(true);
     };
 
-    const handleError = () => {
-      console.error("WebSocket error in board");
+    const errorHandler = () => {
+      console.error("Socket.io connection error in board");
       setConnectionLost(true);
     };
 
-    ws.addEventListener("message", handleMessage);
-    ws.addEventListener("close", handleClose);
-    ws.addEventListener("error", handleError);
+    // Register event handlers
+    socket.on("move", moveHandler);
+    socket.on("player-left", playerLeftHandler);
+    socket.on("rematch-request", rematchRequestHandler);
+    socket.on("rematch-accepted", rematchAcceptedHandler);
+    socket.on("disconnect", disconnectHandler);
+    socket.on("connect_error", errorHandler);
 
+    // Clean up on unmount
     return () => {
-      ws.removeEventListener("message", handleMessage);
-      ws.removeEventListener("close", handleClose);
-      ws.removeEventListener("error", handleError);
+      socket.off("move", moveHandler);
+      socket.off("player-left", playerLeftHandler);
+      socket.off("rematch-request", rematchRequestHandler);
+      socket.off("rematch-accepted", rematchAcceptedHandler);
+      socket.off("disconnect", disconnectHandler);
+      socket.off("connect_error", errorHandler);
     };
-  }, [ws]);
+  }, [socket]);
 
   useEffect(() => {
     const result = calculateWinner(squares);
@@ -85,61 +90,72 @@ export default function OnlineBoard({ ws, playerSymbol, roomCode, isMyTurn, onGa
     }
   }, [squares, onGameEnd]);
 
-  const handleClick = (index) => {
-    if (winner || draw || squares[index] || turn !== playerSymbol || connectionLost || opponentLeft) return;
+  const handleClick = useCallback((index) => {
+    // Check if it's player's turn
+    const isMyTurnNow = turn === playerSymbol;
+    
+    if (winner || draw || squares[index] || !isMyTurnNow || connectionLost || opponentLeft) return;
     
     try {
+      console.log(`Making move in square ${index}`);
       const newSquares = squares.slice();
       newSquares[index] = playerSymbol;
       setSquares(newSquares);
-      setTurn(playerSymbol === "X" ? "O" : "X");
       
-      ws.send(JSON.stringify({ 
-        type: "move", 
+      // After my move, it's opponent's turn
+      setTurn(playerSymbol === "X" ? "X" : "O");
+      
+      socket.emit("move", { 
         move: { index, symbol: playerSymbol } 
-      }));
+      });
     } catch (error) {
       console.error("Error sending move:", error);
       setConnectionLost(true);
     }
-  };
+  }, [winner, draw, squares, turn, playerSymbol, connectionLost, opponentLeft, socket]);
 
-  const requestRematch = () => {
-    if (!ws || connectionLost || opponentLeft) return;
+  const requestRematch = useCallback(() => {
+    if (!socket || connectionLost || opponentLeft) return;
     
     try {
       console.log("Sending rematch request to opponent");
-      ws.send(JSON.stringify({ type: "rematch-request" }));
+      socket.emit("rematch-request");
       setRematchRequested(true);
     } catch (error) {
       console.error("Error requesting rematch:", error);
     }
-  };
+  }, [socket, connectionLost, opponentLeft]);
 
-  const acceptRematch = () => {
-    if (!ws || connectionLost || opponentLeft) return;
+  const acceptRematch = useCallback(() => {
+    if (!socket || connectionLost || opponentLeft) return;
     
     try {
       console.log("Accepting rematch request");
-      ws.send(JSON.stringify({ type: "rematch-accepted" }));
+      socket.emit("rematch-accepted");
       resetBoard();
       setRematchOffered(false);
       setGameEnded(false);
     } catch (error) {
       console.error("Error accepting rematch:", error);
     }
-  };
+  }, [socket, connectionLost, opponentLeft]);
 
   const resetBoard = () => {
     setSquares(Array(9).fill(null));
     setWinner(null);
     setDraw(false);
-    setTurn(isMyTurn ? playerSymbol : playerSymbol === "X" ? "O" : "X");
+    setTurn("X"); // X always starts in a new game
   };
+
+  // Determine if it's my turn
+  const isMyTurnNow = turn === playerSymbol;
 
   return (
     <div className="flex flex-col items-center">
       <h2 className="text-xl mb-2">Room: <span className="font-mono">{roomCode}</span></h2>
+      <div className="text-md mb-2">
+        You are playing as <span className={playerSymbol === "X" ? "text-teal-400 font-bold" : "text-amber-400 font-bold"}>{playerSymbol}</span>
+      </div>
       
       {connectionLost && (
         <div className="bg-red-500/20 text-red-300 p-2 rounded mb-4 w-full text-center">
@@ -178,10 +194,10 @@ export default function OnlineBoard({ ws, playerSymbol, roomCode, isMyTurn, onGa
             className={`w-24 h-24 flex items-center bg-[#1F3641] font-['Poppins'] 
               ${squares[i]==="X" ? "text-teal-400" : squares[i]==="O" ? "text-amber-400" : "text-transparent"} 
               rounded-md border border-gray-400 justify-center text-4xl font-bold
-              ${turn === playerSymbol && !winner && !draw && !connectionLost && !opponentLeft ? "hover:bg-[#223845] cursor-pointer" : "cursor-not-allowed"}
+              ${isMyTurnNow && !winner && !draw && !connectionLost && !opponentLeft ? "hover:bg-[#223845] cursor-pointer" : "cursor-not-allowed"}
             `}
             onClick={() => handleClick(i)}
-            disabled={winner || draw || squares[i] || turn !== playerSymbol || connectionLost || opponentLeft}
+            disabled={winner || draw || squares[i] || !isMyTurnNow || connectionLost || opponentLeft}
           >
             {squares[i] || " "}
           </button>
@@ -200,8 +216,8 @@ export default function OnlineBoard({ ws, playerSymbol, roomCode, isMyTurn, onGa
         ) : opponentLeft ? (
           <span className="text-yellow-400">Opponent left</span>
         ) : (
-          <span className={turn === playerSymbol ? "text-green-400" : "text-slate-400"}>
-            {turn === playerSymbol ? "Your turn" : "Opponent's turn"}
+          <span className={isMyTurnNow ? "text-green-400" : "text-slate-400"}>
+            {isMyTurnNow ? "Your turn" : "Opponent's turn"}
           </span>
         )}
       </div>

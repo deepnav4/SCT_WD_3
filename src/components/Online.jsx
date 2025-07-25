@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { io } from "socket.io-client";
 import OnlineBoard from "./OnlineBoard";
 
-const wsUrl = "ws://localhost:3001";
+// Get socket.io URL based on environment
+const socketUrl = import.meta.env.PROD 
+  ? "" // Empty string will connect to the same host
+  : "http://localhost:3001";
 
 export default function Online({ onBackToHome }) {
-  const [ws, setWs] = useState(null);
+  const [socket, setSocket] = useState(null);
   const [roomCode, setRoomCode] = useState("");
   const [inputCode, setInputCode] = useState("");
   const [status, setStatus] = useState("");
@@ -12,128 +16,105 @@ export default function Online({ onBackToHome }) {
   const [gameStarted, setGameStarted] = useState(false);
   const [playerSymbol, setPlayerSymbol] = useState("");
   const [connectionError, setConnectionError] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
 
-  // Clean up WebSocket connection on unmount
+  // Connect to Socket.io server
   useEffect(() => {
-    return () => {
-      if (ws) {
-        ws.close();
-      }
-    };
-  }, [ws]);
-
-  const connect = () => {
-    try {
+    const newSocket = io(socketUrl, {
+      path: import.meta.env.PROD ? "/api/socket" : "",
+      transports: ["websocket"],
+    });
+    
+    newSocket.on("connect", () => {
+      console.log("Socket.io connected");
+      setStatus("Connected to server");
       setConnectionError(false);
-      const socket = new WebSocket(wsUrl);
-      
-      socket.onopen = () => {
-        console.log("WebSocket connected");
-        setStatus("Connected to server");
-      };
-      
-      socket.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        setStatus("Connection error. Please try again.");
-        setConnectionError(true);
-      };
-      
-      socket.onclose = () => {
-        console.log("WebSocket closed");
-        if (gameStarted) {
-          setStatus("Connection lost. The other player may have left.");
-        }
-      };
-      
-      setWs(socket);
-      return socket;
-    } catch (error) {
-      console.error("Failed to create WebSocket:", error);
-      setStatus("Failed to connect to server");
+    });
+    
+    newSocket.on("connect_error", (error) => {
+      console.error("Socket.io connection error:", error);
+      setStatus("Connection error. Please try again.");
       setConnectionError(true);
-      return null;
-    }
-  };
-
-  const createRoom = () => {
-    const socket = connect();
-    if (!socket) return;
+    });
     
-    socket.onopen = () => {
-      socket.send(JSON.stringify({ type: "create" }));
-    };
-    
-    socket.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        console.log("Received:", data);
-        
-        if (data.type === "room-created") {
-          setRoomCode(data.code);
-          setStatus("Waiting for friend to join...");
-          setIsCreator(true);
-          setPlayerSymbol("X");
-        }
-        
-        if (data.type === "start") {
-          setStatus("Friend joined! Game starting...");
-          setGameStarted(true);
-        }
-        
-        if (data.type === "player-left") {
-          setStatus("Other player left the game");
-        }
-        
-        if (data.type === "error") {
-          setStatus(`Error: ${data.message}`);
-        }
-      } catch (error) {
-        console.error("Error parsing message:", error);
+    newSocket.on("disconnect", () => {
+      console.log("Socket.io disconnected");
+      if (gameStarted) {
+        setStatus("Connection lost. The other player may have left.");
       }
-    };
-  };
+    });
 
-  const joinRoom = () => {
+    // Set up event handlers that should be present for the lifetime of the component
+    newSocket.on("room-created", (data) => {
+      console.log("Room created:", data);
+      setRoomCode(data.code);
+      setStatus("Waiting for friend to join...");
+      setIsCreator(true);
+      setPlayerSymbol("X"); // Creator is X
+      setIsJoining(false);
+    });
+    
+    newSocket.on("start", (data) => {
+      console.log("Game starting:", data);
+      setRoomCode(data.code);
+      setGameStarted(true);
+      setPlayerSymbol(prev => prev === "X" ? "X" : "O");
+      setStatus(prev => prev === "Waiting for friend to join..." ? "Friend joined! Game starting..." : "Joined! Game starting...");
+    });
+    
+    newSocket.on("player-left", () => {
+      setStatus("Other player left the game");
+    });
+    
+    newSocket.on("error", (data) => {
+      setStatus(`Error: ${data.message}`);
+    });
+    
+    setSocket(newSocket);
+    
+    // Clean up on unmount
+    return () => {
+      console.log("Cleaning up socket connection");
+      newSocket.disconnect();
+    };
+  }, []); // Only run once on component mount
+
+  const createRoom = useCallback(() => {
+    if (!socket || socket.disconnected) {
+      setConnectionError(true);
+      setStatus("Not connected to server");
+      return;
+    }
+    
+    console.log("Creating room...");
+    setConnectionError(false);
+    setIsJoining(false); // Not joining, creating
+    socket.emit("create");
+  }, [socket]);
+
+  const joinRoom = useCallback(() => {
     if (!inputCode.trim()) {
       setStatus("Please enter a room code");
       return;
     }
     
-    const socket = connect();
-    if (!socket) return;
+    if (!socket || socket.disconnected) {
+      setConnectionError(true);
+      setStatus("Not connected to server");
+      return;
+    }
     
-    socket.onopen = () => {
-      socket.send(JSON.stringify({ type: "join", code: inputCode.trim() }));
-    };
-    
-    socket.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        console.log("Received:", data);
-        
-        if (data.type === "start") {
-          setRoomCode(inputCode);
-          setStatus("Joined! Game starting...");
-          setPlayerSymbol("O");
-          setGameStarted(true);
-        }
-        
-        if (data.type === "player-left") {
-          setStatus("Other player left the game");
-        }
-        
-        if (data.type === "error") {
-          setStatus(`Error: ${data.message}`);
-        }
-      } catch (error) {
-        console.error("Error parsing message:", error);
-      }
-    };
-  };
+    console.log("Joining room:", inputCode);
+    setConnectionError(false);
+    setIsJoining(true); // We are joining
+    socket.emit("join", { code: inputCode.trim() });
+  }, [socket, inputCode]);
 
-  const resetGame = () => {
-    if (ws) ws.close();
-    setWs(null);
+  const resetGame = useCallback(() => {
+    if (socket) {
+      socket.connect();
+    }
+    
     setRoomCode("");
     setInputCode("");
     setStatus("");
@@ -141,18 +122,19 @@ export default function Online({ onBackToHome }) {
     setGameStarted(false);
     setPlayerSymbol("");
     setConnectionError(false);
-  };
+    setIsJoining(false);
+  }, [socket]);
 
-  const handleBackToHome = () => {
+  const handleBackToHome = useCallback(() => {
     resetGame();
     onBackToHome && onBackToHome();
-  };
+  }, [resetGame, onBackToHome]);
 
-  if (gameStarted && ws && playerSymbol) {
+  if (gameStarted && socket && playerSymbol) {
     return (
       <div className="flex flex-col items-center">
         <OnlineBoard
-          ws={ws}
+          socket={socket}
           playerSymbol={playerSymbol}
           roomCode={roomCode}
           isMyTurn={playerSymbol === "X"}

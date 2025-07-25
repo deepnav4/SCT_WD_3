@@ -1,65 +1,41 @@
-# Task 03: Classic Tic-Tac-Toe Game
+# Tic-Tac-Toe Online Game
 
-This project is a fun and interactive Tic-Tac-Toe game built with React (or Next.js) and styled with Tailwind CSS. It was created as the third task for the SkillCraft Technology web development internship. The game features a clean interface, win detection, and a reset option.
+A multiplayer online Tic-Tac-Toe game with Socket.io for real-time gameplay.
 
+## Running the Project
 
+### Local Development
 
-## ✨ Features
+Run both the frontend and backend servers with a single command:
 
-* **Interactive Game Board:** A classic 3x3 grid where two players can compete.
-* **Player Turns:** The game clearly indicates whose turn it is ("X" or "O").
-* **Win Detection:** Automatically detects when a player has won the game by getting three in a row, column, or diagonal.
-* **Draw Detection:** Recognizes when the game is a draw and no more moves can be made.
-* **Game Status Display:** A clear status message shows the current player, the winner, or if the game is a draw.
-* **Reset Functionality:** A "Play Again" button allows users to reset the board and start a new game at any time.
-* **Responsive Design:** The game is fully playable and looks great on all devices.
+```bash
+npm run start
+```
 
----
+This will start:
+- The Vite development server for the frontend (React) on port 5173
+- The Socket.io server for WebSockets on port 3001
 
-## 🛠️ Tech Stack
+### Individual Commands
 
-* **Framework:**  [React.js](https://reactjs.org/)
-* **Styling:** [Tailwind CSS](https://tailwindcss.com/)
-* **Font:** [Poppins](https://fonts.google.com/specimen/Poppins)
+If needed, you can run the servers separately:
 
----
+```bash
+# Frontend only (Vite)
+npm run dev
 
-## 🚀 Getting Started
+# Backend only (Socket.io)
+npm run dev-server
+```
 
-To get a local copy up and running, follow these simple steps.
+## Game Rules
 
-### Prerequisites
+1. Create a room to start a game as X
+2. Share the room code with a friend
+3. The friend joins the room and plays as O
+4. X always goes first
+5. The first player to get 3 in a row wins
 
-Make sure you have Node.js and npm (or yarn) installed on your machine.
+## Deployment
 
-* npm
-    ```sh
-    npm install npm@latest -g
-    ```
-
-### Installation
-
-1.  Clone the repo
-    ```sh
-    git clone [https://github.com/deepnav4/SCT_WD_3.git](https://github.com/deepnav4/SCT_WD_3.git)
-    ```
-2.  Navigate to the project directory
-    ```sh
-    cd SCT_WD_3
-    ```
-3.  Install NPM packages
-    ```sh
-    npm install
-    ```
-4.  Start the development server (use `npm run dev` for Next.js or `npm start` for Create React App)
-    ```sh
-    npm run dev
-    ```
-    The application will be available at `http://localhost:5173`.
-
----
-
-## 👤 Author
-
-* **Name:** Navdeep Singh
-* **Internship:** Web Development Intern at SkillCraft Technology
+The project is configured for deployment on Vercel. Push to your GitHub repository and connect it to Vercel for automatic deployment.

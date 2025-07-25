@@ -1,6 +1,15 @@
 import { WebSocketServer } from 'ws';
 
-const wss = new WebSocketServer({ port: 3001 });
+// Check if running on Vercel
+const isProduction = process.env.VERCEL === '1';
+
+// Create WebSocket server with appropriate configuration
+const wss = isProduction 
+  ? new WebSocketServer({ 
+      noServer: true, // Important for serverless environment
+      path: '/socket'
+    })
+  : new WebSocketServer({ port: 3001 });
 
 const rooms = {}; // { roomCode: [player1Socket, player2Socket] }
 

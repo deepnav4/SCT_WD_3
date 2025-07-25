@@ -1,41 +1,68 @@
 # Tic-Tac-Toe Online Game
 
-A multiplayer online Tic-Tac-Toe game with Socket.io for real-time gameplay.
+A modern, real-time, online Tic-Tac-Toe game built with React, Vite, Tailwind CSS, and Socket.io. Play with a friend anywhere in the world!
 
-## Running the Project
+## ✨ Features
+
+- **Online Multiplayer:** Play Tic-Tac-Toe with a friend over the internet.
+- **Real-Time Gameplay:** Moves are synced instantly using Socket.io.
+- **Room Code System:** Create a room and share the code for your friend to join.
+- **Rematch Support:** Request and accept rematches without leaving the room.
+- **Responsive Design:** Looks great on desktop and mobile devices.
+- **Status Messages:** Clear feedback for connection, turns, wins, draws, and rematches.
+- **Vercel Deployment Ready:** Easily deploy to Vercel with included configuration.
+- **Modern Stack:** Built with React 19, Vite, Tailwind CSS, and Node.js (Socket.io backend).
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js v18 or higher
+- npm
+
+### Installation
+1. Clone the repo:
+   ```sh
+   git clone https://github.com/deepnav4/SCT_WD_3
+   cd SCT_WD_3
+   ```
+2. Install dependencies:
+   ```sh
+   npm install
+   ```
 
 ### Local Development
-
 Run both the frontend and backend servers with a single command:
-
-```bash
+```sh
 npm run start
 ```
+- Frontend: http://localhost:5173
+- Backend (Socket.io): ws://localhost:3001
 
-This will start:
-- The Vite development server for the frontend (React) on port 5173
-- The Socket.io server for WebSockets on port 3001
-
-### Individual Commands
-
-If needed, you can run the servers separately:
-
-```bash
-# Frontend only (Vite)
-npm run dev
-
-# Backend only (Socket.io)
-npm run dev-server
+### Build for Production
+```sh
+npm run build
 ```
+The production build will be in the `dist/` directory.
 
-## Game Rules
+## 🕹️ How to Play
+1. Click **Create Room** to get a room code (you play as X).
+2. Share the code with a friend.
+3. Your friend enters the code and joins as O.
+4. Play alternately; X always goes first.
+5. Win by getting three in a row, or request a rematch after a game ends!
 
-1. Create a room to start a game as X
-2. Share the room code with a friend
-3. The friend joins the room and plays as O
-4. X always goes first
-5. The first player to get 3 in a row wins
+## 🌐 Deployment (Vercel)
+- The project is ready for Vercel. Connect your repo and set:
+  - **Build Command:** `npm run build`
+  - **Output Directory:** `dist`
+- The backend Socket.io server is set up as a Vercel serverless function (`/api/socket.js`).
 
-## Deployment
+## 📁 Project Structure
+- `src/` - React components and main app logic
+- `api/socket.js` - Socket.io server for online play (Vercel serverless function)
+- `dev-server.js` - Local Socket.io server for development
+- `public/` - Static assets
+- `dist/` - Production build output
 
-The project is configured for deployment on Vercel. Push to your GitHub repository and connect it to Vercel for automatic deployment.
+## 📝 License
+MIT
